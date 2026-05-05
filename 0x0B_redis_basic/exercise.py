@@ -10,30 +10,24 @@ from functools import wraps
 
 
 def count_calls(method: Callable) -> Callable:
-    """
-    Decorator to count how many times a method is called using Redis INCR.
-    """
+    """Decorator to count how many times a method is called."""
     @wraps(method)
-    def wrapper(*args, **kwargs):
-        self = args[0]  # Get instance
+    def wrapper(self, *args, **kwargs):
         key = method.__qualname__
         self._redis.incr(key)
-        return method(*args, **kwargs)
+        return method(self, *args, **kwargs)
     return wrapper
 
 
 def call_history(method: Callable) -> Callable:
-    """
-    Decorator to store the history of inputs and outputs for a method in Redis.
-    """
+    """Decorator to store history of inputs and outputs."""
     @wraps(method)
-    def wrapper(*args, **kwargs):
-        self = args[0]  # Get instance
+    def wrapper(self, *args, **kwargs):
         input_key = method.__qualname__ + ":inputs"
         output_key = method.__qualname__ + ":outputs"
 
-        self._redis.rpush(input_key, str(args[1:]))
-        result = method(*args, **kwargs)
+        self._redis.rpush(input_key, str(args))
+        result = method(self, *args, **kwargs)
         self._redis.rpush(output_key, str(result))
 
         return result
@@ -41,33 +35,25 @@ def call_history(method: Callable) -> Callable:
 
 
 class Cache:
-    """
-    Cache class to interact with Redis for storing and retrieving data.
-    """
+    """Cache class using Redis."""
 
     def __init__(self):
-        """
-        Initialize Redis client and flush the database.
-        """
+        """Initialize Redis client and flush DB."""
         self._redis = redis.Redis()
         self._redis.flushdb()
 
     @call_history
     @count_calls
     def store(self, data: Union[str, bytes, int, float]) -> str:
-        """
-        Store data in Redis with a random key and return the key.
-        """
+        """Store data in Redis and return key."""
         key = str(uuid.uuid4())
         self._redis.set(key, data)
         return key
 
     def get(self, key: str,
-            fn: Optional[Callable[[bytes], Union[str, int, float, bytes]]]
-            = None) -> Union[str, int, float, bytes, None]:
-        """
-        Retrieve data from Redis and optionally apply a conversion function.
-        """
+            fn: Optional[Callable[[bytes], Union[str, int, float, bytes]]] = None
+            ) -> Union[str, int, float, bytes, None]:
+        """Retrieve data and optionally convert it."""
         data = self._redis.get(key)
         if data is None:
             return None
@@ -76,40 +62,26 @@ class Cache:
         return data
 
     def get_str(self, key: str) -> Optional[str]:
-        """
-        Retrieve a UTF-8 string from Redis.
-        """
-        return self.get(key, fn=lambda d: d.decode('utf-8'))
+        """Get string value."""
+        return self.get(key, lambda d: d.decode("utf-8"))
 
     def get_int(self, key: str) -> Optional[int]:
-        """
-        Retrieve an integer from Redis.
-        """
-        return self.get(key, fn=int)
+        """Get integer value."""
+        return self.get(key, int)
 
 
 def replay(method: Callable) -> None:
-    """
-    Display the history of calls of a function.
-
-    Args:
-        method: The function whose history to display.
-    """
+    """Display history of calls."""
     redis_instance = method.__self__._redis
     method_name = method.__qualname__
 
-    input_key = f"{method_name}:inputs"
-    output_key = f"{method_name}:outputs"
+    inputs = redis_instance.lrange(method_name + ":inputs", 0, -1)
+    outputs = redis_instance.lrange(method_name + ":outputs", 0, -1)
 
-    inputs = redis_instance.lrange(input_key, 0, -1)
-    outputs = redis_instance.lrange(output_key, 0, -1)
+    count = redis_instance.get(method_name)
+    count = int(count.decode("utf-8")) if count else 0
 
-    call_count = redis_instance.get(method_name)
-    call_count_int = int(call_count.decode("utf-8")) if call_count else 0
+    print(f"{method_name} was called {count} times:")
 
-    print(f"{method_name} was called {call_count_int} times:")
-
-    for input_args, output in zip(inputs, outputs):
-        input_str = input_args.decode("utf-8")
-        output_str = output.decode("utf-8")
-        print(f"{method_name}(*{input_str}) -> {output_str}")
+    for inp, out in zip(inputs, outputs):
+        print(f"{method_name}(*{inp.decode()}) -> {out.decode()}")
