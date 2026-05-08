@@ -25,7 +25,7 @@ class Server:
         return self.__dataset
 
     def indexed_dataset(self) -> Dict[int, List]:
-        """Dataset indexed by sorting position, starting at 0"""
+        """Dataset indexed by sorting position"""
         if self.__indexed_dataset is None:
             dataset = self.dataset()
             truncated_dataset = dataset[:1000]
@@ -42,32 +42,28 @@ class Server:
         index: int = None,
         page_size: int = 10
     ) -> Dict:
-        """
-        Return a dictionary with hypermedia pagination info.
-        Deletion-resilient pagination.
-        """
+        """Return hypermedia pagination information."""
 
-        indexed_dataset = self.indexed_dataset()
+        dataset = self.indexed_dataset()
 
         if index is None:
             index = 0
 
-        assert 0 <= index < len(indexed_dataset)
+        assert index >= 0
+        assert index < len(dataset)
 
         data = []
-        current_index = index
+        next_index = index
 
-        while len(data) < page_size:
-            item = indexed_dataset.get(current_index)
+        while len(data) < page_size and next_index < len(dataset):
+            if next_index in dataset:
+                data.append(dataset[next_index])
 
-            if item is not None:
-                data.append(item)
-
-            current_index += 1
+            next_index += 1
 
         return {
             "index": index,
-            "next_index": current_index,
-            "page_size": page_size,
+            "next_index": next_index,
+            "page_size": len(data),
             "data": data
         }
