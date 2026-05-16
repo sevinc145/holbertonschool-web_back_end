@@ -2,9 +2,9 @@
 """ Session authentication views """
 
 from os import getenv
-from api.v1.views import app_views
-from flask import request, jsonify
+from flask import request, jsonify, abort
 from models.user import User
+from api.v1.views import app_views
 
 
 @app_views.route(
@@ -13,7 +13,7 @@ from models.user import User
     strict_slashes=False
 )
 def login():
-    """ Login route """
+    """ Login """
 
     email = request.form.get('email')
 
@@ -49,3 +49,21 @@ def login():
     )
 
     return response
+
+
+@app_views.route(
+    '/auth_session/logout',
+    methods=['DELETE'],
+    strict_slashes=False
+)
+def logout():
+    """ Logout """
+
+    from api.v1.app import auth
+
+    destroy = auth.destroy_session(request)
+
+    if not destroy:
+        abort(404)
+
+    return jsonify({}), 200
