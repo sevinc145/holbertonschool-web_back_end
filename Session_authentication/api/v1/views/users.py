@@ -51,7 +51,8 @@ def delete_user(user_id):
     return jsonify({})
 
 
-@app_views.route('/users', methods=['POST'], strict_slashes=False)
+@app_views.route('/users', methods=['POST'],
+                 strict_slashes=False)
 def create_user():
     """ Creates a User """
 
@@ -72,6 +73,7 @@ def create_user():
         setattr(user, key, value)
 
     user.save()
+
     return jsonify(user.to_json()), 201
 
 
@@ -97,4 +99,5 @@ def update_user(user_id):
             setattr(user, key, value)
 
     user.save()
+
     return jsonify(user.to_json())
