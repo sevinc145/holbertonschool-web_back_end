@@ -10,12 +10,12 @@ class BasicAuth(Auth):
 
     def extract_base64_authorization_header(
             self, authorization_header: str) -> str:
-        """ extracts base64 authorization header """
+        """ Extracts Base64 authorization header """
 
         if authorization_header is None:
             return None
 
-        if type(authorization_header) is not str:
+        if not isinstance(authorization_header, str):
             return None
 
         if not authorization_header.startswith('Basic '):
@@ -25,34 +25,38 @@ class BasicAuth(Auth):
 
     def decode_base64_authorization_header(
             self, base64_authorization_header: str) -> str:
-        """ decodes base64 authorization header """
+        """ Decodes Base64 authorization header """
 
         if base64_authorization_header is None:
             return None
 
-        if type(base64_authorization_header) is not str:
+        if not isinstance(base64_authorization_header, str):
             return None
 
         try:
             decoded = base64.b64decode(
-                base64_authorization_header)
+                base64_authorization_header
+            )
             return decoded.decode('utf-8')
         except Exception:
             return None
 
     def extract_user_credentials(
             self, decoded_base64_authorization_header: str) -> (str, str):
-        """ extracts user credentials """
+        """ Extracts user credentials """
 
         if decoded_base64_authorization_header is None:
             return (None, None)
 
-        if type(decoded_base64_authorization_header) is not str:
+        if not isinstance(
+                decoded_base64_authorization_header, str):
             return (None, None)
 
         if ':' not in decoded_base64_authorization_header:
             return (None, None)
 
-        user_email, user_pwd = decoded_base64_authorization_header.split(':', 1)
+        user_email, user_pwd = (
+            decoded_base64_authorization_header.split(':', 1)
+        )
 
         return (user_email, user_pwd)
